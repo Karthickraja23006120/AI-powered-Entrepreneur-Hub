@@ -1,0 +1,137 @@
+I want you to build a complete AI-powered SaaS platform called Entrepreneur Hub that helps entrepreneurs with business ideation, funding, market analysis, legal compliance, mentorship, and personalized learning roadmaps. The project must be production-ready, modular, and scalable, including frontend, backend, AI/ML integration, database, authentication, APIs, and cloud deployment setup.
+
+🎯 Core Functionalities
+
+User Onboarding & Authentication
+
+Sign up/login via email, Google, LinkedIn.
+
+During onboarding, users upload their skills/knowledge (resume, text input, file).
+
+Store user preferences (industry, skills, budget, target goals).
+
+AI Business Idea Generation
+
+AI suggests personalized startup ideas based on user skills, budget, and industry.
+
+Use GPT or LLaMA models with prompt templates.
+
+Market & Competitor Analysis
+
+AI analyzes trends, demand, and competitors using APIs (Google Trends, Crunchbase, etc.).
+
+Visualize insights in interactive graphs/charts.
+
+AI Business Mentor
+
+Chatbot interface for mentorship (funding, scaling, marketing strategies).
+
+AI generates business plans and financial models.
+
+Funding & Networking Hub
+
+Match entrepreneurs with investors, grants, loans, crowdfunding platforms.
+
+AI-powered funding recommendations based on profile.
+
+Legal & Compliance Automation
+
+Provide checklists of licenses/registrations (localized per country).
+
+Auto-generate legal document templates (NDAs, agreements, MoUs).
+
+Business Scaling & Growth
+
+Track KPIs & performance metrics (revenue, customer growth, burn rate).
+
+AI suggests scaling strategies & automation improvements.
+
+Personalized Learning Roadmap (New Feature)
+
+After skill upload, AI creates a step-by-step roadmap for user to become a specialist in chosen domain.
+
+Roadmap includes skills required, resources (courses/books), timeline, milestones, mentors.
+
+Progress tracker with gamified dashboard (badges, completion %).
+
+Integration with Coursera, Udemy, EdX APIs to suggest learning resources.
+
+🖥️ Tech Stack
+
+Frontend: React + Next.js, TailwindCSS, Recharts/D3.js.
+
+Backend: Node.js (NestJS/Express) + Python (FastAPI for AI services).
+
+AI/ML: OpenAI GPT/LLaMA 3, Hugging Face NLP models, TensorFlow/PyTorch for roadmap recommendation.
+
+Databases: PostgreSQL (users, business data), MongoDB (documents, AI outputs), Pinecone/Weaviate (vector embeddings).
+
+Cloud & Infra: AWS/GCP/Azure, Firebase (auth, notifications), Docker + Kubernetes.
+
+APIs: LinkedIn API, Learning Platforms API (Coursera/Udemy/EdX), Payment (Stripe/Razorpay).
+
+📊 Deliverables
+
+Frontend
+
+Landing page with clear CTAs.
+
+Dashboard with AI mentor chat, market insights graphs, roadmap visualization.
+
+Roadmap tracker (timeline, badges, % completion).
+
+Backend & APIs
+
+Authentication & user onboarding APIs.
+
+AI endpoints for idea generation, mentorship, market analysis, funding, roadmap generation.
+
+Database schema for users, ideas, mentors, funding, roadmaps, progress.
+
+AI Layer
+
+Skill extraction from resume/text (NLP pipeline).
+
+Prompt engineering for business ideas & roadmaps.
+
+Recommendation system for roadmap resources.
+
+Database Models
+
+User Profile: skills, goals, budget, industry.
+
+Roadmap: milestones, skills, resources, progress.
+
+Funding Sources: grants, investors, crowdfunding links.
+
+Legal Docs: templates per country/industry.
+
+Integration
+
+Coursera/Udemy/EdX APIs for roadmap resources.
+
+LinkedIn API for auto-fetching skills.
+
+Stripe/Razorpay for subscriptions.
+
+Deployment
+
+Dockerized microservices.
+
+CI/CD pipeline (GitHub Actions / GitLab CI).
+
+Deployed on AWS/GCP with auto-scaling.
+
+🛠️ Requirements
+
+The project must be modular & extendable.
+
+Code must include clear comments & documentation.
+
+Ensure security (JWT auth, role-based access, secure APIs).
+
+Must include testing setup (unit + integration tests).
+
+Provide seed data for demo users, funding sources, and roadmap templates.
+
+⚡ Final Instruction: Build the full project with all functionalities described above. Ensure no feature is left out, and make the system production-ready, scalable, and easy to extend.
