@@ -1,12 +1,12 @@
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { InsertBusinessIdea, InsertLearningRoadmap, InsertRoadmapPhase, InsertRoadmapMilestone } from "@shared/schema";
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('Missing required OpenAI API key: OPENAI_API_KEY');
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error('Missing required Gemini API key: GEMINI_API_KEY');
 }
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// the newest Gemini model series is "gemini-2.5-flash" or "gemini-2.5-pro"
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export interface BusinessIdeaRequest {
   industry: string;
@@ -77,13 +77,15 @@ Respond with JSON in this format:
 }
 `;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-pro",
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
+      const response = await model.generateContent(prompt);
+      const result = JSON.parse(response.response.text() || '{}');
       
       return result.ideas?.map((idea: any) => ({
         userId,
@@ -170,13 +172,15 @@ Respond with JSON in this format:
 }
 `;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-pro",
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
+      const response = await model.generateContent(prompt);
+      const result = JSON.parse(response.response.text() || '{}');
       
       return {
         roadmap: {
@@ -240,13 +244,15 @@ Respond with JSON in this format:
 }
 `;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-pro",
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
       });
 
-      return JSON.parse(response.choices[0].message.content || '{}');
+      const response = await model.generateContent(prompt);
+      return JSON.parse(response.response.text() || '{}');
     } catch (error) {
       console.error('Error generating market analysis:', error);
       throw new Error('Failed to generate market analysis');
@@ -268,18 +274,13 @@ User Question: ${userMessage}
 Provide a helpful, actionable, and encouraging response as a mentor would. Keep it conversational but professional. Limit to 2-3 paragraphs.
 `;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [
-          {
-            role: "system",
-            content: "You are an experienced business mentor who provides practical, actionable advice to entrepreneurs. Be encouraging but realistic."
-          },
-          { role: "user", content: prompt }
-        ],
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        systemInstruction: "You are an experienced business mentor who provides practical, actionable advice to entrepreneurs. Be encouraging but realistic.",
       });
 
-      return response.choices[0].message.content || 'I apologize, but I cannot provide a response at the moment. Please try again.';
+      const response = await model.generateContent(prompt);
+      return response.response.text() || 'I apologize, but I cannot provide a response at the moment. Please try again.';
     } catch (error) {
       console.error('Error generating mentor response:', error);
       throw new Error('Failed to generate mentor response');
@@ -300,18 +301,13 @@ Create a professional, legally-structured document that includes all necessary s
 Make sure to include appropriate disclaimers and ensure the document follows best practices for ${documentType} in ${jurisdiction}.
 `;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [
-          {
-            role: "system",
-            content: "You are a legal expert who creates professional legal documents. Ensure all documents are comprehensive and follow legal best practices."
-          },
-          { role: "user", content: prompt }
-        ],
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        systemInstruction: "You are a legal expert who creates professional legal documents. Ensure all documents are comprehensive and follow legal best practices.",
       });
 
-      return response.choices[0].message.content || 'Failed to generate legal document.';
+      const response = await model.generateContent(prompt);
+      return response.response.text() || 'Failed to generate legal document.';
     } catch (error) {
       console.error('Error generating legal document:', error);
       throw new Error('Failed to generate legal document');
