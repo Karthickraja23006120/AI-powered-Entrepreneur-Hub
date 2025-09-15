@@ -14,10 +14,11 @@ import { apiRequest } from "@/lib/queryClient";
 
 // Make sure to call `loadStripe` outside of a component's render to avoid
 // recreating the `Stripe` object on every render.
-if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
-}
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+// Temporarily commented out for testing - uncomment when adding Stripe functionality
+// if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+//   throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
+// }
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_dummy');
 
 const SubscribeForm = () => {
   const stripe = useStripe();
