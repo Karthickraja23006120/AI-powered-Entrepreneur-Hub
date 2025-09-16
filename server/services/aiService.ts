@@ -1,12 +1,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { mockAiService } from "./mockAiService";
 import type { InsertBusinessIdea, InsertLearningRoadmap, InsertRoadmapPhase, InsertRoadmapMilestone } from "@shared/schema";
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('Missing required Gemini API key: GEMINI_API_KEY');
-}
+const useRealAI = process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here';
 
-// the newest Gemini model series is "gemini-2.5-flash" or "gemini-2.5-pro"
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+let genAI: GoogleGenerativeAI | null = null;
+if (useRealAI) {
+  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+} else {
+  console.warn("Using mock AI service - set GEMINI_API_KEY for real AI features");
+}
 
 export interface BusinessIdeaRequest {
   industry: string;
@@ -39,6 +42,11 @@ export interface FundingRecommendationRequest {
 
 export class AIService {
   async generateBusinessIdeas(userId: string, request: BusinessIdeaRequest): Promise<Partial<InsertBusinessIdea>[]> {
+    // Use mock service if no real API key
+    if (!useRealAI) {
+      return mockAiService.generateBusinessIdeas(userId, request);
+    }
+
     try {
       const prompt = `
 You are a business strategy expert. Generate 3 personalized business ideas for an entrepreneur with the following profile:
@@ -77,7 +85,7 @@ Respond with JSON in this format:
 }
 `;
 
-      const model = genAI.getGenerativeModel({ 
+      const model = genAI!.getGenerativeModel({ 
         model: "gemini-2.5-pro",
         generationConfig: {
           responseMimeType: "application/json",
@@ -110,6 +118,11 @@ Respond with JSON in this format:
     phases: Partial<InsertRoadmapPhase>[];
     milestones: Partial<InsertRoadmapMilestone>[][];
   }> {
+    // Use mock service if no real API key
+    if (!useRealAI) {
+      return mockAiService.generateLearningRoadmap(userId, request);
+    }
+
     try {
       const prompt = `
 You are a learning and development expert. Create a comprehensive learning roadmap for someone with this profile:
@@ -172,7 +185,7 @@ Respond with JSON in this format:
 }
 `;
 
-      const model = genAI.getGenerativeModel({ 
+      const model = genAI!.getGenerativeModel({ 
         model: "gemini-2.5-pro",
         generationConfig: {
           responseMimeType: "application/json",
@@ -209,6 +222,11 @@ Respond with JSON in this format:
   }
 
   async generateMarketAnalysis(request: MarketAnalysisRequest): Promise<any> {
+    // Use mock service if no real API key
+    if (!useRealAI) {
+      return mockAiService.generateMarketAnalysis(request);
+    }
+
     try {
       const prompt = `
 You are a market research analyst. Provide a comprehensive market analysis for:
@@ -244,7 +262,7 @@ Respond with JSON in this format:
 }
 `;
 
-      const model = genAI.getGenerativeModel({ 
+      const model = genAI!.getGenerativeModel({ 
         model: "gemini-2.5-pro",
         generationConfig: {
           responseMimeType: "application/json",
@@ -260,6 +278,11 @@ Respond with JSON in this format:
   }
 
   async generateMentorResponse(userMessage: string, userContext: any): Promise<string> {
+    // Use mock service if no real API key
+    if (!useRealAI) {
+      return mockAiService.generateMentorResponse(userMessage, userContext);
+    }
+
     try {
       const prompt = `
 You are an experienced business mentor and entrepreneur. You're helping an entrepreneur with their business journey.
@@ -274,7 +297,7 @@ User Question: ${userMessage}
 Provide a helpful, actionable, and encouraging response as a mentor would. Keep it conversational but professional. Limit to 2-3 paragraphs.
 `;
 
-      const model = genAI.getGenerativeModel({ 
+      const model = genAI!.getGenerativeModel({ 
         model: "gemini-2.5-flash",
         systemInstruction: "You are an experienced business mentor who provides practical, actionable advice to entrepreneurs. Be encouraging but realistic.",
       });
@@ -288,6 +311,11 @@ Provide a helpful, actionable, and encouraging response as a mentor would. Keep 
   }
 
   async generateLegalDocument(documentType: string, businessType: string, jurisdiction: string, specialRequirements: string[]): Promise<string> {
+    // Use mock service if no real API key
+    if (!useRealAI) {
+      return mockAiService.generateLegalDocument(documentType, businessType, jurisdiction, specialRequirements);
+    }
+
     try {
       const prompt = `
 You are a legal document expert. Generate a comprehensive ${documentType} for:
@@ -301,7 +329,7 @@ Create a professional, legally-structured document that includes all necessary s
 Make sure to include appropriate disclaimers and ensure the document follows best practices for ${documentType} in ${jurisdiction}.
 `;
 
-      const model = genAI.getGenerativeModel({ 
+      const model = genAI!.getGenerativeModel({ 
         model: "gemini-2.5-flash",
         systemInstruction: "You are a legal expert who creates professional legal documents. Ensure all documents are comprehensive and follow legal best practices.",
       });

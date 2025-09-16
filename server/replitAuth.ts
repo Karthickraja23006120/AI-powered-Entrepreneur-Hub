@@ -8,12 +8,26 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+// Mock auth for development if Replit domains not set
+const isDevelopment = !process.env.REPLIT_DOMAINS || process.env.NODE_ENV === 'development';
+
+if (isDevelopment) {
+  console.warn("Running in development mode with mock authentication");
 }
+
+const REPLIT_DOMAINS = process.env.REPLIT_DOMAINS || "localhost:5000";
 
 const getOidcConfig = memoize(
   async () => {
+    if (isDevelopment) {
+      // Return mock config for development
+      return {
+        issuer: { issuer: "http://localhost:5000" },
+        authorization_endpoint: "http://localhost:5000/auth",
+        token_endpoint: "http://localhost:5000/token",
+        userinfo_endpoint: "http://localhost:5000/userinfo",
+      } as any;
+    }
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
       process.env.REPL_ID!
@@ -24,21 +38,32 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
+  
+  let sessionStore;
+  if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')) {
+    const pgStore = connectPg(session);
+    sessionStore = new pgStore({
+      conString: process.env.DATABASE_URL,
+      createTableIfMissing: true,
+      ttl: sessionTtl,
+      tableName: "sessions",
+    });
+  } else {
+    // Use memory store for development
+    const MemoryStore = require('memorystore')(session);
+    sessionStore = new MemoryStore({
+      checkPeriod: sessionTtl,
+    });
+  }
+  
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || 'dev-secret-key-change-in-production',
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: !isDevelopment, // Only secure in production
       maxAge: sessionTtl,
     },
   });
@@ -48,10 +73,16 @@ function updateUserSession(
   user: any,
   tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
 ) {
-  user.claims = tokens.claims();
+  user.claims = tokens.claims ? tokens.claims() : {
+    sub: 'demo-user-123',
+    email: 'demo@example.com',
+    first_name: 'Demo',
+    last_name: 'User',
+    exp: Math.floor(Date.now() / 1000) + 3600
+  };
   user.access_token = tokens.access_token;
   user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
+  user.expires_at = user.claims.exp;
 }
 
 async function upsertUser(
@@ -72,6 +103,37 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  if (isDevelopment) {
+    // Mock authentication for development
+    app.get("/api/login", async (req, res) => {
+      const mockUser = {
+        claims: {
+          sub: 'demo-user-123',
+          email: 'demo@example.com',
+          first_name: 'Demo',
+          last_name: 'User',
+          exp: Math.floor(Date.now() / 1000) + 3600
+        }
+      };
+      
+      await upsertUser(mockUser.claims);
+      req.login(mockUser, () => {
+        res.redirect("/");
+      });
+    });
+    
+    app.get("/api/logout", (req, res) => {
+      req.logout(() => {
+        res.redirect("/");
+      });
+    });
+    
+    passport.serializeUser((user: Express.User, cb) => cb(null, user));
+    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+    
+    return;
+  }
+
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
@@ -84,8 +146,7 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
+  for (const domain of REPLIT_DOMAINS.split(",")) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
@@ -119,7 +180,7 @@ export async function setupAuth(app: Express) {
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
+          client_id: process.env.REPL_ID || 'dev-client',
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
         }).href
       );
@@ -128,6 +189,14 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  if (isDevelopment) {
+    // Mock authentication check for development
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {
