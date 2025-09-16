@@ -5,11 +5,22 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+// Use a default database URL for development if not provided
+let databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.warn("DATABASE_URL not set, using default development database");
+  // Default to a local PostgreSQL instance for development
+  databaseUrl = "postgresql://postgres:password@localhost:5432/entrepreneur_hub";
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Validate the database URL format
+try {
+  new URL(databaseUrl);
+} catch (error) {
+  console.error("Invalid DATABASE_URL format:", databaseUrl);
+  throw new Error("DATABASE_URL must be a valid PostgreSQL connection string");
+}
+
+export const pool = new Pool({ connectionString: databaseUrl });
 export const db = drizzle({ client: pool, schema });
