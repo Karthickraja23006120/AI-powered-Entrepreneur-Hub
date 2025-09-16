@@ -6,10 +6,11 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
+import { storage } from "./storage.js"; // ✅ ensure .js extension in ESM if not TS build step
 
 // Mock auth for development if Replit domains not set
-const isDevelopment = !process.env.REPLIT_DOMAINS || process.env.NODE_ENV === 'development';
+const isDevelopment =
+  !process.env.REPLIT_DOMAINS || process.env.NODE_ENV === "development";
 
 if (isDevelopment) {
   console.warn("Running in development mode with mock authentication");
@@ -17,6 +18,7 @@ if (isDevelopment) {
 
 const REPLIT_DOMAINS = process.env.REPLIT_DOMAINS || "localhost:5000";
 
+// Discover or mock OIDC config
 const getOidcConfig = memoize(
   async () => {
     if (isDevelopment) {
@@ -36,28 +38,29 @@ const getOidcConfig = memoize(
   { maxAge: 3600 * 1000 }
 );
 
-export function getSession() {
+export async function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  
+
   let sessionStore;
-  if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')) {
-    const pgStore = connectPg(session);
-    sessionStore = new pgStore({
+  if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes("localhost")) {
+    const PgStore = connectPg(session);
+    sessionStore = new PgStore({
       conString: process.env.DATABASE_URL,
       createTableIfMissing: true,
       ttl: sessionTtl,
       tableName: "sessions",
     });
   } else {
-    // Use memory store for development
-    const MemoryStore = require('memorystore')(session);
+    // ✅ Dynamic ESM import instead of require
+    const MemoryStoreFactory = (await import("memorystore")).default;
+    const MemoryStore = MemoryStoreFactory(session);
     sessionStore = new MemoryStore({
       checkPeriod: sessionTtl,
     });
   }
-  
+
   return session({
-    secret: process.env.SESSION_SECRET || 'dev-secret-key-change-in-production',
+    secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
@@ -73,21 +76,21 @@ function updateUserSession(
   user: any,
   tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
 ) {
-  user.claims = tokens.claims ? tokens.claims() : {
-    sub: 'demo-user-123',
-    email: 'demo@example.com',
-    first_name: 'Demo',
-    last_name: 'User',
-    exp: Math.floor(Date.now() / 1000) + 3600
-  };
+  user.claims = tokens.claims
+    ? tokens.claims()
+    : {
+        sub: "demo-user-123",
+        email: "demo@example.com",
+        first_name: "Demo",
+        last_name: "User",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      };
   user.access_token = tokens.access_token;
   user.refresh_token = tokens.refresh_token;
   user.expires_at = user.claims.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
+async function upsertUser(claims: any) {
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -99,7 +102,7 @@ async function upsertUser(
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
-  app.use(getSession());
+  app.use(await getSession());
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -108,29 +111,29 @@ export async function setupAuth(app: Express) {
     app.get("/api/login", async (req, res) => {
       const mockUser = {
         claims: {
-          sub: 'demo-user-123',
-          email: 'demo@example.com',
-          first_name: 'Demo',
-          last_name: 'User',
-          exp: Math.floor(Date.now() / 1000) + 3600
-        }
+          sub: "demo-user-123",
+          email: "demo@example.com",
+          first_name: "Demo",
+          last_name: "User",
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        },
       };
-      
+
       await upsertUser(mockUser.claims);
       req.login(mockUser, () => {
         res.redirect("/");
       });
     });
-    
+
     app.get("/api/logout", (req, res) => {
       req.logout(() => {
         res.redirect("/");
       });
     });
-    
+
     passport.serializeUser((user: Express.User, cb) => cb(null, user));
     passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-    
+
     return;
   }
 
@@ -154,7 +157,7 @@ export async function setupAuth(app: Express) {
         scope: "openid email profile offline_access",
         callbackURL: `https://${domain}/api/callback`,
       },
-      verify,
+      verify
     );
     passport.use(strategy);
   }
@@ -180,7 +183,7 @@ export async function setupAuth(app: Express) {
     req.logout(() => {
       res.redirect(
         client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID || 'dev-client',
+          client_id: process.env.REPL_ID || "dev-client",
           post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
         }).href
       );
